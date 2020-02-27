@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake, tools
+from conans.errors import ConanInvalidConfiguration
 import os
 
 
@@ -7,16 +8,33 @@ class MongoCxxConan(ConanFile):
     version = "3.4.0"
     url = "http://github.com/bincrafters/conan-mongo-cxx-driver"
     description = "C++ Driver for MongoDB"
-    license = "https://github.com/mongodb/mongo-cxx-driver/blob/{0}/LICENSE".format(
-        version)
+    license = "Apache-2.0"
     settings = "os", "compiler", "arch", "build_type"
-    options = {"shared": [True, False], "fPIC": [True, False]}
-    default_options = {"shared": False, "fPIC": True}
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "polyfill": ["std", "boost", "mnmlstc", "experimental"]
+    }
+    default_options = {"shared": False, "fPIC": True, "polyfill": "boost"}
     requires = "mongo-c-driver/1.16.1@bincrafters/stable"
     generators = "cmake"
 
     _source_subfolder = "source_subfolder"
     _build_subfolder = "build_subfolder"
+
+    def config_options(self):
+        if self.settings.compiler == 'Visual Studio' and self.options.polyfill != "boost":
+            raise ConanInvalidConfiguration("For MSVC, best to use the boost polyfill")
+
+        if self.options.polyfill == "std":
+            tools.check_min_cppstd(self, "17")
+
+        if self.options.polyfill == "boost":
+            self.requires("boost_optional/1.69.0@bincrafters/stable")
+
+        # Cannot model mnmlstc (not packaged, is pulled dynamically) or
+        # std::experimental (how to check availability in stdlib?) polyfill
+        # dependencies
 
     def source(self):
         remote = "https://github.com/mongodb/mongo-cxx-driver/archive/r{0}.tar.gz"
@@ -31,17 +49,16 @@ class MongoCxxConan(ConanFile):
         '''
 
         cmake_file = os.path.join(self._source_subfolder, "CMakeLists.txt")
-        tools.replace_in_file(
-            cmake_file, "project(MONGO_CXX_DRIVER LANGUAGES CXX)", conan_magic_lines)
+        tools.replace_in_file(cmake_file, "project(MONGO_CXX_DRIVER LANGUAGES CXX)", conan_magic_lines)
 
         cmake = CMake(self)
         if self.settings.compiler == 'Visual Studio':
             cmake.definitions["BSONCXX_POLY_USE_BOOST"] = 1
 
-        cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = True
-        cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = False
-        cmake.definitions["BSONCXX_POLY_USE_BOOST"] = False
-        cmake.definitions["BSONCXX_POLY_USE_STD"] = False
+        cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
+        cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
+        cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
+        cmake.definitions["BSONCXX_POLY_USE_STD"] = self.options.polyfill == "std"
         cmake.configure(source_dir=self._source_subfolder)
         cmake.build()
 
