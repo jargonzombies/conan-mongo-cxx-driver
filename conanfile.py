@@ -49,13 +49,15 @@ class MongoCxxConan(ConanFile):
         conan_basic_setup()
         '''
 
+        if self.settings.compiler == "Visual Studio":
+            conan_magic_lines += "add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)"
+
         cmake_file = os.path.join(self._source_subfolder, "CMakeLists.txt")
         tools.replace_in_file(cmake_file, "project(MONGO_CXX_DRIVER LANGUAGES CXX)", conan_magic_lines)
         cmake = CMake(self)
         cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
         cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
         cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
-        cmake.definitions["BSONCXX_POLY_USE_STD"] = self.options.polyfill == "std"
         cmake.configure(source_dir=self._source_subfolder)
         cmake.build()
 
