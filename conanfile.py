@@ -31,6 +31,7 @@ class MongoCxxConan(ConanFile):
 
         if self.options.polyfill == "boost":
             self.requires("boost_optional/1.69.0@bincrafters/stable")
+            self.requires("boost_smart_ptr/1.69.0@bincrafters/stable")
 
         # Cannot model mnmlstc (not packaged, is pulled dynamically) or
         # std::experimental (how to check availability in stdlib?) polyfill
@@ -50,11 +51,7 @@ class MongoCxxConan(ConanFile):
 
         cmake_file = os.path.join(self._source_subfolder, "CMakeLists.txt")
         tools.replace_in_file(cmake_file, "project(MONGO_CXX_DRIVER LANGUAGES CXX)", conan_magic_lines)
-
         cmake = CMake(self)
-        if self.settings.compiler == 'Visual Studio':
-            cmake.definitions["BSONCXX_POLY_USE_BOOST"] = 1
-
         cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
         cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
         cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
@@ -63,36 +60,17 @@ class MongoCxxConan(ConanFile):
         cmake.build()
 
     def package(self):
-        self.copy(pattern="COPYING*", src=self._source_subfolder)
-        self.copy(pattern="*.hpp", src=os.path.join(self._source_subfolder, "src", "bsoncxx"), dst=os.path.join("include", "bsoncxx"), keep_path=True)
-        self.copy(pattern="*.hpp", src=os.path.join(self._source_subfolder, "src", "mongocxx"), dst=os.path.join("include", "mongocxx"), keep_path=True)
-        self.copy(pattern="*.hpp", src="src/bsoncxx", dst="include/bsoncxx", keep_path=True)
-        self.copy(pattern="*.hpp", dst="include/mongocxx", src="src/mongocxx", keep_path=True)
-        self.copy(pattern="*.hpp", src="src/bsoncxx/third_party/EP_mnmlstc_core-prefix/src/EP_mnmlstc_core/include/core", dst="include/bsoncxx/third_party/mnmlstc/core", keep_path=False)
-
-        try:
-            os.rename("lib/libmongocxx-static.a", "lib/libmongocxx.a")
-        except:
-            pass
-        try:
-            os.rename("lib/libbsoncxx-static.a", "lib/libbsoncxx.a")
-        except:
-            pass
-        try:
-            os.rename("lib/libmongocxx-static.lib", "lib/libmongocxx.lib")
-        except:
-            pass
-        try:
-            os.rename("lib/libbsoncxx-static.lib", "lib/libbsoncxx.lib")
-        except:
-            pass
-
-        self.copy(pattern="lib*cxx.lib", src="lib", dst="lib", keep_path=False)
-        self.copy(pattern="lib*cxx.a", src="lib", dst="lib", keep_path=False)
-        self.copy(pattern="lib*cxx.so*", src="lib", dst="lib", keep_path=False)
-        self.copy(pattern="lib*cxx.dylib", src="lib", dst="lib", keep_path=False)
-        self.copy(pattern="lib*cxx._noabi.dylib", src="lib", dst="lib", keep_path=False)
+        # Do not reconfigure because that causes a full rebuild
+        CMake(self).install()
 
     def package_info(self):
-        self.cpp_info.libs = ['mongocxx', 'bsoncxx']
-        self.cpp_info.includedirs.append('include/bsoncxx/third_party/mnmlstc')
+        # Need to ensure mongocxx is linked before bsoncxx
+        self.cpp_info.libs = sorted(tools.collect_libs(self), reverse=True)
+        self.cpp_info.includedirs.extend([os.path.join("include", x, "v_noabi") for x in ["bsoncxx", "mongocxx"]])
+
+        if self.options.polyfill == "mnmlstc":
+            self.cpp_info.includedirs.append(os.path.join("include", "bsoncxx", "third_party", "mnmlstc"))
+
+        if not self.options.shared:
+            self.cpp_info.defines.extend(["BSONCXX_STATIC", "MONGOCXX_STATIC"])
+
