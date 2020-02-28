@@ -37,6 +37,9 @@ class MongoCxxConan(ConanFile):
         # std::experimental (how to check availability in stdlib?) polyfill
         # dependencies
 
+    def configure(self):
+        tools.check_min_cppstd(self, "11")
+
     def source(self):
         remote = "https://github.com/mongodb/mongo-cxx-driver/archive/r{0}.tar.gz"
         tools.get(remote.format(self.version))
