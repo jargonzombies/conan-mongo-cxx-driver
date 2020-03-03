@@ -19,6 +19,7 @@ class MongoCxxConan(ConanFile):
     requires = "mongo-c-driver/1.16.1@bincrafters/stable"
     generators = "cmake"
 
+    _cmake = None
     _source_subfolder = "source_subfolder"
     _build_subfolder = "build_subfolder"
 
@@ -48,12 +49,15 @@ class MongoCxxConan(ConanFile):
         os.rename(extracted_dir, self._source_subfolder)
 
     def _configure_cmake(self):
-        cmake = CMake(self)
-        cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
-        cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
-        cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
-        cmake.configure(source_dir=self._source_subfolder)
-        return cmake
+        if self._cmake:
+            return self._cmake
+
+        self._cmake = CMake(self)
+        self._cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
+        self._cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
+        self._cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
+        self._cmake.configure(source_dir=self._source_subfolder)
+        return self._cmake
 
     def build(self):
         conan_magic_lines = '''project(MONGO_CXX_DRIVER LANGUAGES CXX)
@@ -71,7 +75,8 @@ class MongoCxxConan(ConanFile):
 
     def package(self):
         # Do not reconfigure because that causes a full rebuild
-        CMake(self).install()
+        cmake = self._configure_cmake()
+        cmake.install()
 
     def package_info(self):
         # Need to ensure mongocxx is linked before bsoncxx
