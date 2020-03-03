@@ -22,9 +22,12 @@ class MongoCxxConan(ConanFile):
     _source_subfolder = "source_subfolder"
     _build_subfolder = "build_subfolder"
 
-    def config_options(self):
+    def configure(self):
         if self.settings.compiler == 'Visual Studio' and self.options.polyfill != "boost":
             raise ConanInvalidConfiguration("For MSVC, best to use the boost polyfill")
+
+        if self.settings.cppstd:
+            tools.check_min_cppstd(self, "11")
 
         if self.options.polyfill == "std":
             tools.check_min_cppstd(self, "17")
@@ -37,14 +40,20 @@ class MongoCxxConan(ConanFile):
         # std::experimental (how to check availability in stdlib?) polyfill
         # dependencies
 
-    def configure(self):
-        tools.check_min_cppstd(self, "11")
 
     def source(self):
         remote = "https://github.com/mongodb/mongo-cxx-driver/archive/r{0}.tar.gz"
         tools.get(remote.format(self.version))
         extracted_dir = "mongo-cxx-driver-r{0}".format(self.version)
         os.rename(extracted_dir, self._source_subfolder)
+
+    def _configure_cmake(self):
+        cmake = CMake(self)
+        cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
+        cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
+        cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
+        cmake.configure(source_dir=self._source_subfolder)
+        return cmake
 
     def build(self):
         conan_magic_lines = '''project(MONGO_CXX_DRIVER LANGUAGES CXX)
@@ -57,11 +66,7 @@ class MongoCxxConan(ConanFile):
 
         cmake_file = os.path.join(self._source_subfolder, "CMakeLists.txt")
         tools.replace_in_file(cmake_file, "project(MONGO_CXX_DRIVER LANGUAGES CXX)", conan_magic_lines)
-        cmake = CMake(self)
-        cmake.definitions["BSONCXX_POLY_USE_MNMLSTC"] = self.options.polyfill == "mnmlstc"
-        cmake.definitions["BSONCXX_POLY_USE_STD_EXPERIMENTAL"] = self.options.polyfill == "experimental"
-        cmake.definitions["BSONCXX_POLY_USE_BOOST"] = self.options.polyfill == "boost"
-        cmake.configure(source_dir=self._source_subfolder)
+        cmake = self._configure_cmake()
         cmake.build()
 
     def package(self):
@@ -78,4 +83,3 @@ class MongoCxxConan(ConanFile):
 
         if not self.options.shared:
             self.cpp_info.defines.extend(["BSONCXX_STATIC", "MONGOCXX_STATIC"])
-
