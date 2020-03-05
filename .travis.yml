@@ -11,9 +11,9 @@ osx: &osx
 matrix:
      include:
      - <<: *linux
-       env: CONAN_GCC_VERSIONS=4.9 CONAN_DOCKER_IMAGE=conanio/gcc49
+       env: CONAN_CPPSTDS=11 CONAN_GCC_VERSIONS=4.9 CONAN_DOCKER_IMAGE=conanio/gcc49
      - <<: *linux
-       env: CONAN_GCC_VERSIONS=5 CONAN_DOCKER_IMAGE=conanio/gcc5
+       env: CONAN_CPPSTDS=11 CONAN_GCC_VERSIONS=5 CONAN_DOCKER_IMAGE=conanio/gcc5
      - <<: *linux
        env: CONAN_GCC_VERSIONS=6 CONAN_DOCKER_IMAGE=conanio/gcc6
      - <<: *linux
@@ -23,11 +23,11 @@ matrix:
      - <<: *linux
        env: CONAN_GCC_VERSIONS=9 CONAN_DOCKER_IMAGE=conanio/gcc9
      - <<: *linux
-       env: CONAN_CLANG_VERSIONS=3.9 CONAN_DOCKER_IMAGE=conanio/clang39
+       env: CONAN_CPPSTDS=11 CONAN_CLANG_VERSIONS=3.9 CONAN_DOCKER_IMAGE=conanio/clang39
      - <<: *linux
-       env: CONAN_CLANG_VERSIONS=4.0 CONAN_DOCKER_IMAGE=conanio/clang40
+       env: CONAN_CPPSTDS=11 CONAN_CLANG_VERSIONS=4.0 CONAN_DOCKER_IMAGE=conanio/clang40
      - <<: *linux
-       env: CONAN_CLANG_VERSIONS=5.0 CONAN_DOCKER_IMAGE=conanio/clang50
+       env: CONAN_CPPSTDS=11 CONAN_CLANG_VERSIONS=5.0 CONAN_DOCKER_IMAGE=conanio/clang50
      - <<: *linux
        env: CONAN_CLANG_VERSIONS=6.0 CONAN_DOCKER_IMAGE=conanio/clang60
      - <<: *linux
@@ -38,13 +38,13 @@ matrix:
        env: CONAN_CLANG_VERSIONS=9 CONAN_DOCKER_IMAGE=conanio/clang9
      - <<: *osx
        osx_image: xcode9.4
-       env: CONAN_APPLE_CLANG_VERSIONS=9.1
+       env: CONAN_CPPSTDS=11 CONAN_APPLE_CLANG_VERSIONS=9.1
      - <<: *osx
        osx_image: xcode10.3
-       env: CONAN_APPLE_CLANG_VERSIONS=10.0
+       env: CONAN_CPPSTDS=11 CONAN_APPLE_CLANG_VERSIONS=10.0
      - <<: *osx
        osx_image: xcode11.3
-       env: CONAN_APPLE_CLANG_VERSIONS=11.0
+       env: CONAN_CPPSTDS=11 CONAN_APPLE_CLANG_VERSIONS=11.0
 
 install:
 - chmod +x .ci/install.sh
