@@ -23,14 +23,23 @@ class MongoCxxConan(ConanFile):
     _source_subfolder = "source_subfolder"
     _build_subfolder = "build_subfolder"
 
+    def _is_cpp98(self):
+        return self.settings.compiler.cppstd \
+            and any(str(self.settings.compiler.cppstd) == std for std in ["98", "gnu98"])
+
+    def _is_not_cpp17(self):
+        return self.settings.compiler.cppstd \
+            and not any([str(self.settings.compiler.cppstd) == std for std in ["17", "20", "gnu17", "gnu20"]])
+
     def configure(self):
         if self.settings.compiler == 'Visual Studio' and self.options.polyfill != "boost":
             raise ConanInvalidConfiguration("For MSVC, best to use the boost polyfill")
 
-        tools.check_min_cppstd(self, "11")
+        if self._is_cpp98():
+            raise ConanInvalidConfiguration("Requires at least C++11")
 
-        if self.options.polyfill == "std":
-            tools.check_min_cppstd(self, "17")
+        if self.options.polyfill == "std" and self._is_not_cpp17():
+            raise ConanInvalidConfiguration("Std polyfill requires at least C++17")
 
         if self.options.polyfill == "boost":
             self.requires("boost_optional/1.69.0@bincrafters/stable")
